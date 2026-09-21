@@ -546,10 +546,6 @@ AES_INV_MIX = [
 ]
 
 
-# Matriz multiplicativa constante do MixColumns para Cifragem
-MIX_MATRIX = [[2, 3, 1, 1], [1, 2, 3, 1], [1, 1, 2, 3], [3, 1, 1, 2]]
-
-
 # Converte 16B em uma matriz de estado 4x4
 def bytes2state(data: bytes) -> list[list[int]]:
     state = [[0] * 4 for _ in range(4)]
@@ -614,6 +610,9 @@ def sub_word(word: list[int]) -> list[int]:
 
 
 def key_expansion(key: bytes) -> list[list[list[int]]]:
+    if len(key) != 16:
+        raise ValueError("AES-128 exige chave de 16 bytes")
+    
     w = []
 
     for i in range(4):
@@ -650,12 +649,9 @@ def shift_rows(state: list[list[int]]):
     state[3] = state[3][3:] + state[3][:3]
 
 
-# TAREFA B, SUBSTITUIR:
-# Matriz multiplicativa constante para Cifragem (FIPS 197)
-MIX_MATRIX_ENCRYPT = [[2, 3, 1, 1], [1, 2, 3, 1], [1, 1, 2, 3], [3, 1, 1, 2]]
-
-
 def encrypt_block(block: bytes, round_keys: list[list[list[int]]]) -> bytes:
+    if len(block) != 16:
+        raise ValueError("O bloco deve ter exatamente 16 bytes.")
     # Conversão dos bytes de entrada
     state = bytes2state(block)
 
@@ -695,18 +691,6 @@ def encrypt_message(message_str: str, key_input: str) -> str:
     return ciphertext.hex()
 
 
-if __name__ == "__main__":
-    # plaintext = "..."
-    # key = "minhachavesecre1"
-
-    plaintext = input("insira a mensagem: ")
-    key = input("insira a chave: ")
-
-    resultado_hex = encrypt_message(plaintext, key)
-
-    print("\nResultado Cifrado (Hex):", resultado_hex)
-
-
 def mix_columns(state: list[list[int]], matrix: list[list[int]]):
     """
     Aplica a multiplicação matricial sobre cada COLUNA da matriz de estado.
@@ -732,8 +716,7 @@ def inv_mix_columns(state):
 
 def inv_sub_bytes(estado):
     """
-        substitui cada byte do estado pelo valor corresponden
-    xoBSvIn na"""
+    substitui cada byte do estado pelo valor correspondente na InvSBox"""
     for r in range(4):
         for c in range(4):
             estado[r][c] = INV_SBOX[estado[r][c]]
@@ -753,7 +736,6 @@ def inv_shift_rows(estado: list[list[int]]):
     estado[3] = estado[3][-3:] + estado[3][:-3]
 
 
-# AES_POLY = [1, 0, 0, 0, 1, 1, 0, 1, 1]
 AES_POLY = 0x11B
 
 
@@ -817,10 +799,11 @@ def parse_ciphertext(cifrado: str) -> bytes:
     cifrado = cifrado.strip()
 
     # Tenta hexadecimal primeiro (ex.: "8f3a...")
-    try:
-        return bytes.fromhex(cifrado)
-    except ValueError:
-        pass
+    if not any(sep in cifrado for sep in " ,\n\t\r"):
+        try:
+            return bytes.fromhex(cifrado)
+        except ValueError:
+            pass
 
     # Tenta decimal (ex.: "143 58 ..." ou "143,58,...")
     partes = cifrado.replace(",", " ").split()
@@ -885,4 +868,16 @@ def decrypt_message(cifrado_str: str, key_input: str) -> str:
         decrypted_block = decrypt_block(block, round_keys)
         plaintext.extend(decrypted_block)
 
-    return unpad_pkcs7(bytes(plaintext), 16).decode("utf-8")
+    try:
+        return unpad_pkcs7(bytes(plaintext), 16).decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("erro: falha - chave incorreta ou dados corrompidos")
+
+if __name__ == "__main__":
+    modo = input("Cifrar (c) ou decifrar (d)? ").strip().lower()
+    msg = input("insira a mensagem: ")
+    key = input("insira a chave: ")
+    if modo == "d":
+        print("\nTexto claro:", decrypt_message(msg, key))
+    else:
+        print("\nResultado Cifrado (Hex):", encrypt_message(msg, key))
