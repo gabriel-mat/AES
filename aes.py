@@ -1,4 +1,3 @@
-# S-Box oficial do AES (FIPS 197)
 S_BOX = [
     0x63,
     0x7C,
@@ -612,7 +611,7 @@ def sub_word(word: list[int]) -> list[int]:
 def key_expansion(key: bytes) -> list[list[list[int]]]:
     if len(key) != 16:
         raise ValueError("AES-128 exige chave de 16 bytes")
-    
+
     w = []
 
     for i in range(4):
@@ -647,6 +646,12 @@ def shift_rows(state: list[list[int]]):
     state[1] = state[1][1:] + state[1][:1]
     state[2] = state[2][2:] + state[2][:2]
     state[3] = state[3][3:] + state[3][:3]
+
+
+def add_round_key(state: list[list[int]], round_key: list[list[int]]):
+    for r in range(4):
+        for c in range(4):
+            state[r][c] ^= round_key[r][c]
 
 
 def encrypt_block(block: bytes, round_keys: list[list[list[int]]]) -> bytes:
@@ -761,17 +766,6 @@ def multiplicacao_gf(a: int, b: int) -> int:
     return r
 
 
-def add_round_key(estado, round_key):
-    """
-    AddRoundKey
-    XOR bit a bit entre estado e subchave da rodada
-    como os coeficientes dos polinomios sao 2, inversa de XOR é XOR
-    """
-    for r in range(4):
-        for c in range(4):
-            estado[r][c] ^= round_key[r][c]
-
-
 def unpad_pkcs7(data: bytes, block_size: int = 16) -> bytes:
     """
     Remove o padding PKCS#7 adicionado em pad_pkcs7.
@@ -872,6 +866,7 @@ def decrypt_message(cifrado_str: str, key_input: str) -> str:
         return unpad_pkcs7(bytes(plaintext), 16).decode("utf-8")
     except UnicodeDecodeError:
         raise ValueError("erro: falha - chave incorreta ou dados corrompidos")
+
 
 if __name__ == "__main__":
     modo = input("Cifrar (c) ou decifrar (d)? ").strip().lower()
