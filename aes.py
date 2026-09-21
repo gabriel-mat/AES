@@ -624,7 +624,7 @@ def key_expansion(key: bytes) -> list[list[list[int]]]:
 
         if i % 4 == 0:
             temp = sub_word(rot_word(temp))
-            rcon_byte = (RCON_WORDS[i // 4] >> 24) & 0xFF
+            rcon_byte = (RCON_WORDS[i // 4] >> 24)
             temp[0] ^= rcon_byte
 
         word_i = [w[i - 4][b] ^ temp[b] for b in range(4)]
