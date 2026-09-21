@@ -24,7 +24,7 @@ A interação com o programa ocorre de forma direta via terminal interativo:
     Modo: Digite **c** para cifrar ou **d** para decifrar.
 
     Mensagem:
-        Na cifragem: digite o texto plano desejado.
+        Na cifragem: digite o texto plano desejado.\
         Na decifragem: digite a string cifrada em formato hexadecimal.
 
     Chave: Digite a chave de 128 bits (16 caracteres de texto ASCII ou 32 caracteres Hexadecimais).
