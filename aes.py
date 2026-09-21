@@ -18,8 +18,10 @@ S_BOX = [
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 ]
 
-# Round Constants para Expansão de Chave
-RCON = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
+RCON_WORDS = [
+    0x8d000000, 0x01000000, 0x02000000, 0x04000000, 0x08000000, 
+    0x10000000, 0x20000000, 0x40000000, 0x80000000, 0x1b000000, 0x36000000
+]
 
 # Matriz multiplicativa constante do MixColumns para Cifragem
 MIX_MATRIX = [
@@ -71,3 +73,147 @@ def parse_key(key_input: str) -> bytes:
         f" - 16 caracteres para Texto Simples (ASCII/UTF-8) ou\n"
         f" - 32 caracteres para Hexadecimal"
     )
+    
+def rot_word(word: list[int]) -> list[int]:
+    return word[1:] + word[:1]
+
+def sub_bytes(state: list[list[int]]):
+    for r in range(4):
+        for c in range(4):
+            state[r][c] = S_BOX[state[r][c]]
+
+def sub_word(word: list[int]) -> list[int]:
+    return [S_BOX[b] for b in word]
+
+def key_expansion(key: bytes) -> list[list[list[int]]]:
+    w = []
+
+    for i in range(4):
+        w.append([key[4*i], key[4*i + 1], key[4*i + 2], key[4*i + 3]])
+
+    for i in range(4, 44):
+        temp = w[i - 1][:]
+
+        if i % 4 == 0:
+            temp = sub_word(rot_word(temp))
+            rcon_byte = (RCON_WORDS[i // 4] >> 24) & 0xFF
+            temp[0] ^= rcon_byte
+
+        word_i = [w[i - 4][b] ^ temp[b] for b in range(4)]
+        w.append(word_i)
+
+    k = []
+    for r in range(11):
+        round_words = w[4 * r : 4 * r + 4]
+
+        key_matrix = [[0] * 4 for _ in range(4)]
+        for col in range(4):
+            for row in range(4):
+                key_matrix[row][col] = round_words[col][row]
+
+        k.append(key_matrix)
+
+    return k
+
+def shift_rows(state: list[list[int]]):
+    state[1] = state[1][1:] + state[1][:1]
+    state[2] = state[2][2:] + state[2][:2]
+    state[3] = state[3][3:] + state[3][:3]
+
+def add_round_key(state: list[list[int]], round_key: list[list[int]]):
+    for r in range(4):
+        for c in range(4):
+            state[r][c] ^= round_key[r][c]
+            
+# TAREFA B, SUBSTITUIR:
+# Matriz multiplicativa constante para Cifragem (FIPS 197)
+MIX_MATRIX_ENCRYPT = [
+    [2, 3, 1, 1],
+    [1, 2, 3, 1],
+    [1, 1, 2, 3],
+    [3, 1, 1, 2]
+]
+
+def gmul(a: int, b: int) -> int:
+    """
+    Multiplicação no Corpo de Galois GF(2^8) com o polinômio irredutível 0x11B.
+    """
+    p = 0
+    for _ in range(8):
+        if b & 1:
+            p ^= a
+        hi_bit_set = a & 0x80
+        a = (a << 1) & 0xFF
+        if hi_bit_set:
+            a ^= 0x1B
+        b >>= 1
+    return p
+
+def mix_columns(state: list[list[int]], matrix: list[list[int]]):
+    """
+    Aplica a multiplicação matricial sobre cada COLUNA da matriz de estado.
+    Aceita qualquer matriz multiplicativa constante 4x4.
+    """
+    for c in range(4):
+        # Pega os 4 bytes da coluna 'c'
+        col = [state[r][c] for r in range(4)]
+        
+        # Multiplica a matriz constante pela coluna
+        for r in range(4):
+            state[r][c] = (
+                gmul(matrix[r][0], col[0]) ^
+                gmul(matrix[r][1], col[1]) ^
+                gmul(matrix[r][2], col[2]) ^
+                gmul(matrix[r][3], col[3])
+            )
+            
+# FIM TAREFA B
+
+def encrypt_block(block: bytes, round_keys: list[list[list[int]]]) -> bytes:
+    # Conversão dos bytes de entrada
+    state = bytes2state(block)
+
+    # Round 0
+    add_round_key(state, round_keys[0])
+
+    # Rounds 1 a 9
+    for r in range(1, 10):
+        sub_bytes(state)
+        shift_rows(state)
+        mix_columns(state, MIX_MATRIX_ENCRYPT)
+        add_round_key(state, round_keys[r])
+
+    # Round 10
+    sub_bytes(state)
+    shift_rows(state)
+    add_round_key(state, round_keys[10])
+
+    # Conversão da matriz
+    return state2bytes(state)
+
+def encrypt_message(message_str: str, key_input: str) -> str:
+    key_bytes = parse_key(key_input)
+    round_keys = key_expansion(key_bytes)
+    
+    message_bytes = message_str.encode('utf-8')
+    padded_bytes = pad_pkcs7(message_bytes, 16)
+    
+    ciphertext = bytearray()
+    
+    for i in range(0, len(padded_bytes), 16):
+        block = padded_bytes[i : i + 16]
+        encrypted_block = encrypt_block(block, round_keys)
+        ciphertext.extend(encrypted_block)
+        
+    return ciphertext.hex()
+
+if __name__ == "__main__":
+    # plaintext = "..."
+    # key = "minhachavesecre1"
+
+    plaintext = input("insira a mensagem: ")
+    key = input("insira a chave: ")
+
+    resultado_hex = encrypt_message(plaintext, key)
+
+    print("\nResultado Cifrado (Hex):", resultado_hex)
