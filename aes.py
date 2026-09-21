@@ -22,7 +22,7 @@ RCON_WORDS = [
     0x10000000, 0x20000000, 0x40000000, 0x80000000, 0x1b000000, 0x36000000
 ]
 
-MIX_MATRIX = [
+MIX_MATRIX_ENCRYPT = [
     [2, 3, 1, 1],
     [1, 2, 3, 1],
     [1, 1, 2, 3],
@@ -124,13 +124,6 @@ def add_round_key(state: list[list[int]], round_key: list[list[int]]):
             state[r][c] ^= round_key[r][c]
             
 # TAREFA B, SUBSTITUIR:
-# Matriz multiplicativa constante para Cifragem (FIPS 197)
-MIX_MATRIX_ENCRYPT = [
-    [2, 3, 1, 1],
-    [1, 2, 3, 1],
-    [1, 1, 2, 3],
-    [3, 1, 1, 2]
-]
 
 def gmul(a: int, b: int) -> int:
     """
