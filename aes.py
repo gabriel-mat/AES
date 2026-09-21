@@ -577,7 +577,7 @@ def parse_key(key_input: str) -> bytes:
             return bytes.fromhex(key_input)
         except ValueError:
             raise ValueError(
-                "Erro: a chave possui 32 caracteres, mas contém digitos hexadecimais invalidos!"
+                "Erro: a chave possui 32 caracteres, mas contem digitos hexadecimais invalidos!"
             )
 
     # String
@@ -614,9 +614,11 @@ def key_expansion(key: bytes) -> list[list[list[int]]]:
 
     w = []
 
+    # 16B da chave recebida, ela e usada no primeiro round
     for i in range(4):
         w.append([key[4 * i], key[4 * i + 1], key[4 * i + 2], key[4 * i + 3]])
 
+    # Construcao das demais round keys
     for i in range(4, 44):
         temp = w[i - 1][:]
 
@@ -865,14 +867,15 @@ def decrypt_message(cifrado_str: str, key_input: str) -> str:
     try:
         return unpad_pkcs7(bytes(plaintext), 16).decode("utf-8")
     except UnicodeDecodeError:
-        raise ValueError("erro: falha - chave incorreta ou dados corrompidos")
+        raise ValueError("erro: chave incorreta ou dados corrompidos")
 
 
 if __name__ == "__main__":
-    modo = input("Cifrar (c) ou decifrar (d)? ").strip().lower()
+    modo = input("cifrar (c) ou decifrar (d)? ").strip().lower()
     msg = input("insira a mensagem: ")
     key = input("insira a chave: ")
+    
     if modo == "d":
         print("\nTexto claro:", decrypt_message(msg, key))
     else:
-        print("\nResultado Cifrado (Hex):", encrypt_message(msg, key))
+        print("\nResultado cifrado (Hex):", encrypt_message(msg, key))
